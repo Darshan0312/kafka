@@ -1,31 +1,36 @@
 const { kafka } = require("./client");
+const readline = require("readline");
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
 async function init() {
   const producer = kafka.producer();
 
-  try {
-    console.log('Connecting Producer...');
-    await producer.connect();
-    console.log('Producer Connected Successfully');
+  console.log("Connecting Producer");
+  await producer.connect();
+  console.log("Producer Connected Successfully");
 
+  rl.setPrompt("> ");
+  rl.prompt();
+
+  rl.on("line", async function (line) {
+    const [riderName, location] = line.split(" ");
     await producer.send({
-      topic: "rider-updated", // ✅ make sure this matches admin.js and consumer.js
+      topic: "rider-updates",
       messages: [
         {
-          partition: 0,
+          partition: location.toLowerCase() === "north" ? 0 : 1,
           key: "location-update",
-          value: JSON.stringify({ name: "Darshan", loc: "Bangalore" }),
+          value: JSON.stringify({ name: riderName, location }),
         },
       ],
     });
-
-    console.log("Message sent successfully");
-  } catch (err) {
-    console.error("Producer error:", err);
-  } finally {
+  }).on("close", async () => {
     await producer.disconnect();
-    console.log("Producer disconnected");
-  }
+  });
 }
 
 init();
